@@ -409,7 +409,7 @@ const ProductsPanel: React.FC = () => {
       console.error('Erro na migração:', error);
       alert('Erro ao migrar produtos. Verifique o console para mais detalhes.');
     }
-  };</parameter>
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
