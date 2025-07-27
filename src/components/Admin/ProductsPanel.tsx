@@ -328,19 +328,14 @@ const ProductsPanel: React.FC = () => {
       productId: editingProduct?.id
     });
 
-    // Validate that we have a valid product ID for updates
-    if (editingProduct && (!editingProduct.id || editingProduct.id.startsWith('temp-'))) {
-      alert('Erro: ID do produto inválido. Tente recarregar a página e criar o produto novamente.');
-      setShowModal(false);
-      return;
-    }
-    
     try {
       let savedProduct;
       
       if (editingProduct) {
-        await updateProduct(editingProduct.id!, formData);
+        // Para edição, usar o ID do produto existente
+        await updateProduct(editingProduct.id, formData);
       } else {
+        // Para criação, não passar o ID
         const newProduct = await createProduct(formData);
         setEditingProduct(newProduct);
       }
@@ -351,12 +346,6 @@ const ProductsPanel: React.FC = () => {
       alert(`Produto ${editingProduct ? 'atualizado' : 'criado'} com sucesso!`);
       
       // Refresh products list
-      
-      // Forçar recarregamento dos produtos após salvar
-      console.log('✅ Produto salvo, recarregando lista...');
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
       
     } catch (error) {
       console.error('Erro ao salvar produto:', error);
