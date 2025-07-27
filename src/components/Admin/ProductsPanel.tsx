@@ -267,7 +267,19 @@ const ProductsPanel: React.FC = () => {
   }, [products, getProductImage]);
 
   const handleCreate = () => {
-    setEditingProduct(getDefaultFormData());
+    // Gerar um ID temporário para o formulário (será removido na criação)
+    const tempId = `temp-${Date.now()}`;
+    setEditingProduct({
+      id: tempId,
+      name: '',
+      category: 'acai',
+      price: 0,
+      description: '',
+      is_active: true,
+      is_weighable: false,
+      has_complements: false,
+      complement_groups: []
+    });
     setShowModal(true);
   };
 
@@ -378,7 +390,9 @@ const ProductsPanel: React.FC = () => {
             scheduled_days: product.scheduledDays,
           };
           
-          await createProduct(productData);
+          // Remove o campo id para permitir que o banco gere um UUID válido
+          const { id, ...productWithoutId } = productData;
+          await createProduct(productWithoutId);
           console.log(`✅ Produto migrado: ${product.name}`);
         } catch (error) {
           console.error(`❌ Erro ao migrar produto ${product.name}:`, error);
@@ -418,7 +432,8 @@ const ProductsPanel: React.FC = () => {
       return;
     }
 
-    const isCreating = !editingProduct.id;
+    // Verificar se é criação (sem ID válido do banco) ou edição (com ID válido do banco)
+    const isCreating = !editingProduct.id || !products.some(p => p.id === editingProduct.id);
     
     console.log('🚀 Iniciando salvamento do produto:', {
       isCreating,
@@ -427,14 +442,15 @@ const ProductsPanel: React.FC = () => {
 
     try {
       if (isCreating) {
-        // Para criação, remover o ID se existir
-        const { id, ...productDataWithoutId } = editingProduct;
-        const newProduct = await createProduct(productDataWithoutId);
-        console.log('✅ Produto criado:', newProduct);
+        console.log('🆕 Criando novo produto...');
+        // Remove o campo id para permitir que o banco gere um UUID válido
+        const { id, ...productWithoutId } = editingProduct;
+        const newProduct = await createProduct(productWithoutId);
+        console.log('✅ Produto criado com ID:', newProduct.id);
       } else {
-        // Para edição, usar o ID do produto existente
-        const updatedProduct = await updateProduct(editingProduct.id!, editingProduct);
-        console.log('✅ Produto atualizado:', updatedProduct);
+        console.log('✏️ Editando produto existente:', editingProduct.id);
+        await updateProduct(editingProduct.id!, editingProduct);
+        console.log('✅ Produto atualizado:', editingProduct.id);
       }
       
       setShowModal(false);
