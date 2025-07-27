@@ -150,14 +150,19 @@ export const useStore2Products = () => {
         .from('store2_products')
         .update(updates)
         .eq('id', id)
-        .select()
-        .single();
+        .select();
 
       if (error) throw error;
       
-      setProducts(prev => prev.map(p => p.id === id ? data : p));
-      console.log('✅ Produto da Loja 2 atualizado:', data);
-      return data;
+      // Check if any rows were updated
+      if (!data || data.length === 0) {
+        throw new Error(`Produto com ID ${id} não encontrado no banco de dados`);
+      }
+
+      const updatedProduct = data[0];
+      setProducts(prev => prev.map(p => p.id === id ? updatedProduct : p));
+      console.log('✅ Produto da Loja 2 atualizado:', updatedProduct);
+      return updatedProduct;
     } catch (err) {
       console.error('❌ Erro ao atualizar produto da Loja 2:', err);
       throw new Error(err instanceof Error ? err.message : 'Erro ao atualizar produto');

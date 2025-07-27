@@ -145,21 +145,26 @@ export const useDeliveryProducts = () => {
         .from('delivery_products')
         .update(safeUpdate)
         .eq('id', id)
-        .select('*')
-        .single();
+        .select('*');
 
       if (error) {
         console.error('❌ Erro ao atualizar produto:', error);
         throw new Error(`Erro ao atualizar produto: ${error.message || 'Erro desconhecido'}`);
       }
 
+      // Check if any rows were updated
+      if (!data || data.length === 0) {
+        throw new Error(`Produto com ID ${id} não encontrado no banco de dados`);
+      }
+
+      const updatedProduct = data[0];
       console.log('✅ Produto atualizado no banco:', data);
 
       // Update local state
-      setProducts(prev => prev.map(p => p.id === id ? data : p));
+      setProducts(prev => prev.map(p => p.id === id ? updatedProduct : p));
       
       console.log('✅ Estado local atualizado');
-      return data;
+      return updatedProduct;
 
     } catch (err) {
       console.error('❌ Erro ao atualizar produto:', err);
