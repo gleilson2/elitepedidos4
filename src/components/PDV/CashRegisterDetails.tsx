@@ -1,6 +1,7 @@
 import React from 'react';
 import { Clock, User, DollarSign, ArrowDownCircle, ArrowUpCircle, AlertCircle, RefreshCw, Plus, Minus, Info } from 'lucide-react';
 import { PDVCashRegister, PDVCashRegisterSummary } from '../../types/pdv';
+import { usePermissions } from '../../hooks/usePermissions';
 
 interface CashRegisterDetailsProps {
   register: PDVCashRegister | null;
@@ -9,6 +10,11 @@ interface CashRegisterDetailsProps {
 }
 
 const CashRegisterDetails: React.FC<CashRegisterDetailsProps> = ({ register, summary, onRefresh }) => {
+  const { hasPermission } = usePermissions();
+  
+  // Verificar se é administrador
+  const isAdmin = hasPermission('can_view_operators') || hasPermission('can_manage_products');
+  
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -258,18 +264,22 @@ const CashRegisterDetails: React.FC<CashRegisterDetailsProps> = ({ register, sum
               </p>
             </div>
             
-            <div className="flex justify-between pt-1 border-t border-gray-200">
-              <p className="text-sm font-medium text-gray-700">Saldo Esperado</p>
-              <p className="font-bold text-green-600" title="Valor de abertura + entradas em dinheiro - saídas">
-                {formatPrice(summary.expected_balance)}
-              </p>
-            </div>
-            <div className="flex justify-between pt-1 text-xs text-gray-500">
-              <p className="text-xs">Apenas transações em dinheiro</p>
-              <p>
-                {formatPrice(summary.opening_amount)} + entradas - saídas
-              </p>
-            </div>
+            {isAdmin && (
+              <>
+                <div className="flex justify-between pt-1 border-t border-gray-200">
+                  <p className="text-sm font-medium text-gray-700">Saldo Esperado</p>
+                  <p className="font-bold text-green-600" title="Valor de abertura + entradas em dinheiro - saídas">
+                    {formatPrice(summary.expected_balance)}
+                  </p>
+                </div>
+                <div className="flex justify-between pt-1 text-xs text-gray-500">
+                  <p className="text-xs">Apenas transações em dinheiro</p>
+                  <p>
+                    {formatPrice(summary.opening_amount)} + entradas - saídas
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         </div>
         

@@ -9,6 +9,21 @@ interface Store2CashRegisterDetailsProps {
 }
 
 const Store2CashRegisterDetails: React.FC<Store2CashRegisterDetailsProps> = ({ register, summary, onRefresh }) => {
+  // Para a Loja 2, verificar se é admin através do localStorage
+  const isAdmin = (() => {
+    try {
+      const storedOperator = localStorage.getItem('pdv_operator');
+      if (storedOperator) {
+        const operator = JSON.parse(storedOperator);
+        return operator.code?.toUpperCase() === 'ADMIN' || 
+               operator.name?.toUpperCase().includes('ADMIN');
+      }
+      return false;
+    } catch (error) {
+      return false;
+    }
+  })();
+  
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -182,18 +197,22 @@ const Store2CashRegisterDetails: React.FC<Store2CashRegisterDetailsProps> = ({ r
               </p>
             </div>
             
-            <div className="flex justify-between pt-1 border-t border-gray-200">
-              <p className="text-sm font-medium text-gray-700">Saldo Esperado</p>
-              <p className="font-bold text-green-600" title="Valor de abertura + entradas em dinheiro - saídas">
-                {formatPrice(summary.expected_balance)}
-              </p>
-            </div>
-            <div className="flex justify-between pt-1 text-xs text-gray-500">
-              <p className="text-xs">Apenas transações em dinheiro</p>
-              <p>
-                {formatPrice(summary.opening_amount)} + entradas - saídas
-              </p>
-            </div>
+            {isAdmin && (
+              <>
+                <div className="flex justify-between pt-1 border-t border-gray-200">
+                  <p className="text-sm font-medium text-gray-700">Saldo Esperado</p>
+                  <p className="font-bold text-green-600" title="Valor de abertura + entradas em dinheiro - saídas">
+                    {formatPrice(summary.expected_balance)}
+                  </p>
+                </div>
+                <div className="flex justify-between pt-1 text-xs text-gray-500">
+                  <p className="text-xs">Apenas transações em dinheiro</p>
+                  <p>
+                    {formatPrice(summary.opening_amount)} + entradas - saídas
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         </div>
         

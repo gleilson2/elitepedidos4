@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, AlertTriangle, DollarSign, CheckCircle, Printer } from 'lucide-react';
 import { PDVCashRegister, PDVCashRegisterSummary, PDVCashRegisterEntry } from '../../types/pdv';
+import { usePermissions } from '../../hooks/usePermissions';
 
 interface CashRegisterCloseConfirmationProps {
   isOpen: boolean;
@@ -19,10 +20,15 @@ const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps
   summary,
   isProcessing
 }) => {
+  const { hasPermission } = usePermissions();
+  
+  // Verificar se é administrador
+  const isAdmin = hasPermission('can_view_operators') || hasPermission('can_manage_products');
+  
   if (!isOpen) return null;
 
   // State for closing amount
-  const [closingAmount, setClosingAmount] = useState(summary?.expected_balance || 0);
+  const [closingAmount, setClosingAmount] = useState(isAdmin ? (summary?.expected_balance || 0) : 0);
   const [printMovements, setPrintMovements] = useState(true);
 
   const formatPrice = (price: number) => {
@@ -84,8 +90,17 @@ const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps
                   </div>
                   <div className="pt-2 border-t border-blue-200">
                     <div className="flex justify-between">
-                      <span className="font-medium text-blue-800">Saldo esperado:</span>
-                      <span className="font-bold text-blue-800">{formatPrice(summary?.expected_balance || 0)}</span>
+                      {isAdmin ? (
+                        <>
+                          <span className="font-medium text-blue-800">Saldo esperado:</span>
+                          <span className="font-bold text-blue-800">{formatPrice(summary?.expected_balance || 0)}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="font-medium text-blue-800">Valor para fechamento:</span>
+                          <span className="font-bold text-blue-800">Informe o valor</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -162,7 +177,7 @@ const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps
               </p>
               
               {/* Aviso de diferença */}
-              {closingAmount !== (summary?.expected_balance || 0) && closingAmount > 0 && (
+              {isAdmin && closingAmount !== (summary?.expected_balance || 0) && closingAmount > 0 && (
                 <div className={`mt-2 p-3 rounded-lg border ${
                   closingAmount > (summary?.expected_balance || 0)
                     ? 'bg-green-50 border-green-200'
@@ -196,6 +211,22 @@ const CashRegisterCloseConfirmation: React.FC<CashRegisterCloseConfirmationProps
                           : 'text-red-600'
                       }`}>
                         Saldo esperado: {formatPrice(summary?.expected_balance || 0)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {!isAdmin && (
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={16} className="text-blue-600" />
+                    <div>
+                      <p className="text-sm font-medium text-blue-800">
+                        Informe o valor real em caixa
+                      </p>
+                      <p className="text-sm text-blue-700">
+                        Conte o dinheiro físico no caixa e informe o valor total.
                       </p>
                     </div>
                   </div>
