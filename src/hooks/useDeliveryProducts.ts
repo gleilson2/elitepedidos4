@@ -123,35 +123,10 @@ export const useDeliveryProducts = () => {
         throw new Error('Supabase não configurado. Configure as variáveis de ambiente para usar esta funcionalidade.');
       }
 
-      // 1. First check if the product exists in the database
-      const { data: existingProduct, error: checkError } = await supabase
-        .from('delivery_products')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle();
-
-      if (checkError) {
-        console.error('❌ Erro ao verificar produto existente:', checkError);
-        throw new Error(`Erro ao verificar produto: ${checkError.message}`);
-      }
-
-      if (!existingProduct) {
-        console.error('❌ Produto não encontrado no banco:', id);
-        console.log('🔍 Produtos disponíveis no estado local:', products.map(p => ({ id: p.id, name: p.name })));
-        
-        // Try to refresh products from database
-        console.log('🔄 Tentando recarregar produtos do banco...');
-        await fetchProducts();
-        
-        throw new Error(`Produto com ID ${id} não foi encontrado no banco de dados. O produto pode ter sido excluído ou criado apenas localmente. Tente recarregar a página.`);
-      }
-
-      console.log('✅ Produto encontrado no banco:', existingProduct);
-
-      // 2. Prepare clean update data
+      // Prepare clean update data
       const { created_at, updated_at, has_complements, ...cleanUpdates } = updates as any;
 
-      // 3. Remove undefined values and add updated_at
+      // Remove undefined values and add updated_at
       const safeUpdate = Object.fromEntries(
         Object.entries({
           ...cleanUpdates,
@@ -165,50 +140,32 @@ export const useDeliveryProducts = () => {
         originalUpdates: updates
       });
 
-      // 4. Perform the update
+      // Perform the update
       const { data, error } = await supabase
         .from('delivery_products')
         .update(safeUpdate)
         .eq('id', id)
-        .select('*');
+        .select('*')
+        .single();
 
       if (error) {
         console.error('❌ Erro ao atualizar produto:', error);
         throw new Error(`Erro ao atualizar produto: ${error.message || 'Erro desconhecido'}`);
       }
 
-      if (!data || data.length === 0) {
-        // No rows were updated - values were already the same
-        console.log('ℹ️ Nenhuma linha foi atualizada - valores já eram os mesmos');
-        
-        // Return the existing product with updates applied
-        const updatedProduct = {
-          ...existingProduct,
-          ...cleanUpdates,
-          updated_at: new Date().toISOString()
-        };
-        
-        // Update local state
-        setProducts(prev => prev.map(p => p.id === id ? updatedProduct : p));
-        
-        console.log('✅ Produto atualizado localmente (sem mudanças no banco)');
-        return updatedProduct;
-      }
-
-      const updatedProduct = data[0];
-      console.log('✅ Produto atualizado no banco:', updatedProduct);
+      console.log('✅ Produto atualizado no banco:', data);
 
       // Update local state
-      setProducts(prev => prev.map(p => p.id === id ? updatedProduct : p));
+      setProducts(prev => prev.map(p => p.id === id ? data : p));
       
       console.log('✅ Estado local atualizado');
-      return updatedProduct;
+      return data;
 
     } catch (err) {
       console.error('❌ Erro ao atualizar produto:', err);
       throw err;
     }
-  }, [fetchProducts, products]);
+  }, []);
 
   const syncWithDatabase = useCallback(async () => {
     console.log('🔄 Sincronizando produtos com banco de dados...');

@@ -329,23 +329,36 @@ const ProductsPanel: React.FC = () => {
     });
 
     try {
-      let savedProduct;
-      
       if (editingProduct) {
         // Para edição, usar o ID do produto existente
-        await updateProduct(editingProduct.id, formData);
+        const updatedProduct = await updateProduct(editingProduct.id, formData);
+        console.log('✅ Produto atualizado:', updatedProduct);
       } else {
         // Para criação, não passar o ID
         const newProduct = await createProduct(formData);
+        console.log('✅ Produto criado:', newProduct);
         setEditingProduct(newProduct);
       }
+      
       setShowModal(false);
       resetForm();
       
       // Show success message
-      alert(`Produto ${editingProduct ? 'atualizado' : 'criado'} com sucesso!`);
+      const successMessage = document.createElement('div');
+      successMessage.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 flex items-center gap-2';
+      successMessage.innerHTML = `
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        Produto ${editingProduct ? 'atualizado' : 'criado'} com sucesso!
+      `;
+      document.body.appendChild(successMessage);
       
-      // Refresh products list
+      setTimeout(() => {
+        if (document.body.contains(successMessage)) {
+          document.body.removeChild(successMessage);
+        }
+      }, 3000);
       
     } catch (error) {
       console.error('Erro ao salvar produto:', error);
