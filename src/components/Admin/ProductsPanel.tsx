@@ -376,7 +376,6 @@ const ProductsPanel: React.FC = () => {
             complement_groups: product.complementGroups,
             sizes: product.sizes,
             scheduled_days: product.scheduledDays,
-            availability_type: product.availability?.type || 'always'
           };
           
           await createProduct(productData);
