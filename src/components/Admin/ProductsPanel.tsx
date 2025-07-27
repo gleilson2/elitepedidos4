@@ -200,6 +200,7 @@ const ProductsPanel: React.FC = () => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [productImages, setProductImages] = useState<Record<string, string>>({});
   const [editingProduct, setEditingProduct] = useState<ProductFormData | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const getDefaultFormData = (): ProductFormData => ({
     name: '',
