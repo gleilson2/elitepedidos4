@@ -529,6 +529,79 @@ const ProductsPanel: React.FC = () => {
     setShowScheduleModal(true);
   };
 
+  const insertAllProductsToDatabase = async () => {
+    if (!confirm('Tem certeza que deseja inserir TODOS os produtos do código no banco de dados? Esta operação pode demorar alguns minutos.')) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      console.log('🚀 Iniciando inserção de todos os produtos no banco...');
+      
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: string[] = [];
+
+      for (const product of products) {
+        try {
+          console.log(`📦 Inserindo produto: ${product.name}`);
+          
+          // Preparar dados do produto para o banco
+          const productData = {
+            name: product.name,
+            category: product.category,
+            price: product.price,
+            original_price: product.originalPrice,
+            description: product.description,
+            image_url: product.image,
+            is_active: product.isActive !== false,
+            is_weighable: product.is_weighable || false,
+            price_per_gram: product.pricePerGram,
+            complement_groups: product.complementGroups,
+            sizes: product.sizes,
+            scheduled_days: product.scheduledDays,
+            availability_type: product.availability?.type || 'always'
+          };
+
+          await createProduct(productData);
+          successCount++;
+          console.log(`✅ Produto inserido: ${product.name}`);
+          
+          // Pequena pausa para não sobrecarregar o banco
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (error) {
+          errorCount++;
+          const errorMsg = `${product.name}: ${error instanceof Error ? error.message : 'Erro desconhecido'}`;
+          errors.push(errorMsg);
+          console.error(`❌ Erro ao inserir ${product.name}:`, error);
+        }
+      }
+
+      // Mostrar resultado
+      const resultMessage = `
+Inserção concluída!
+
+✅ Produtos inseridos com sucesso: ${successCount}
+❌ Produtos com erro: ${errorCount}
+📊 Total processado: ${products.length}
+
+${errors.length > 0 ? `\nErros encontrados:\n${errors.slice(0, 5).join('\n')}${errors.length > 5 ? `\n... e mais ${errors.length - 5} erros` : ''}` : ''}
+      `.trim();
+
+      alert(resultMessage);
+      console.log('📊 Resultado final:', { successCount, errorCount, total: products.length });
+      
+      // Recarregar produtos do banco
+      await refetch();
+      
+    } catch (error) {
+      console.error('❌ Erro geral na inserção:', error);
+      alert('Erro geral ao inserir produtos. Verifique o console para mais detalhes.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSaveSchedule = async (productId: string, scheduledDays: any) => {
     try {
       await saveProductSchedule(productId, scheduledDays);
@@ -762,6 +835,22 @@ const ProductsPanel: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <button
+            onClick={insertAllProductsToDatabase}
+            disabled={loading}
+            className="bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Inserindo...
+              </>
+            ) : (
+              <>
+                📦 Inserir Todos os Produtos
+              </>
+            )}
+          </button>
         {products.map((product) => (
           <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden">
             {product.image_url && (
@@ -1205,6 +1294,22 @@ const ProductsPanel: React.FC = () => {
               </button>
             </div>
           </div>
+          <button
+            onClick={insertAllProductsToDatabase}
+            disabled={loading}
+            className="bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Inserindo...
+              </>
+            ) : (
+              <>
+                📦 Inserir Todos os Produtos
+              </>
+            )}
+          </button>
         </div>
       )}
 
