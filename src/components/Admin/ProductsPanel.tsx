@@ -214,6 +214,7 @@ const ProductsPanel: React.FC = () => {
   const [draggedOptionIndex, setDraggedOptionIndex] = useState<{ groupIndex: number; optionIndex: number } | null>(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [selectedProductForSchedule, setSelectedProductForSchedule] = useState<any | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
   
   const { getProductSchedule, saveProductSchedule } = useProductScheduling();
 
@@ -276,10 +277,12 @@ const ProductsPanel: React.FC = () => {
       complement_groups: []
     });
     setEditingProduct(null);
+    setIsCreating(false);
   };
 
   const handleCreate = () => {
     resetForm();
+    setIsCreating(true);
     setShowModal(true);
   };
 
@@ -306,6 +309,7 @@ const ProductsPanel: React.FC = () => {
     
     setFormData(productData);
     setEditingProduct(productData);
+    setIsCreating(false);
     setShowModal(true);
   };
 
@@ -323,21 +327,23 @@ const ProductsPanel: React.FC = () => {
     e.preventDefault();
     
     console.log('🚀 Iniciando salvamento do produto:', {
-      editingProduct: !!editingProduct,
+      isCreating,
+      hasEditingProduct: !!editingProduct,
       formData,
       productId: editingProduct?.id
     });
 
     try {
-      if (editingProduct) {
-        // Para edição, usar o ID do produto existente
-        const updatedProduct = await updateProduct(editingProduct.id, formData);
-        console.log('✅ Produto atualizado:', updatedProduct);
-      } else {
+      if (isCreating) {
         // Para criação, não passar o ID
         const newProduct = await createProduct(formData);
         console.log('✅ Produto criado:', newProduct);
-        setEditingProduct(newProduct);
+      } else if (editingProduct?.id) {
+        // Para edição, usar o ID do produto existente
+        const updatedProduct = await updateProduct(editingProduct.id!, formData);
+        console.log('✅ Produto atualizado:', updatedProduct);
+      } else {
+        throw new Error('Estado inválido: não é criação nem edição válida');
       }
       
       setShowModal(false);
@@ -350,7 +356,7 @@ const ProductsPanel: React.FC = () => {
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
         </svg>
-        Produto ${editingProduct ? 'atualizado' : 'criado'} com sucesso!
+        Produto ${isCreating ? 'criado' : 'atualizado'} com sucesso!
       `;
       document.body.appendChild(successMessage);
       
@@ -371,7 +377,8 @@ const ProductsPanel: React.FC = () => {
       console.error('Erro completo:', {
         error,
         formData,
-        editingProduct
+        editingProduct,
+        isCreating
       });
     }
   };
