@@ -198,9 +198,10 @@ const ProductsPanel: React.FC = () => {
   const { uploadImage, uploading, getProductImage } = useImageUpload();
   const [showModal, setShowModal] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<ProductFormData | null>(null);
   const [productImages, setProductImages] = useState<Record<string, string>>({});
-  const [formData, setFormData] = useState<ProductFormData>({
+  const [editingProduct, setEditingProduct] = useState<ProductFormData | null>(null);
+
+  const getDefaultFormData = (): ProductFormData => ({
     name: '',
     category: 'acai',
     price: 0,
@@ -210,11 +211,11 @@ const ProductsPanel: React.FC = () => {
     has_complements: false,
     complement_groups: []
   });
+  
   const [draggedGroupIndex, setDraggedGroupIndex] = useState<number | null>(null);
   const [draggedOptionIndex, setDraggedOptionIndex] = useState<{ groupIndex: number; optionIndex: number } | null>(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [selectedProductForSchedule, setSelectedProductForSchedule] = useState<any | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
   
   const { getProductSchedule, saveProductSchedule } = useProductScheduling();
 
@@ -265,24 +266,8 @@ const ProductsPanel: React.FC = () => {
     }
   }, [products, getProductImage]);
 
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      category: 'acai',
-      price: 0,
-      description: '',
-      is_active: true,
-      is_weighable: false,
-      has_complements: false,
-      complement_groups: []
-    });
-    setEditingProduct(null);
-    setIsCreating(false);
-  };
-
   const handleCreate = () => {
-    resetForm();
-    setIsCreating(true);
+    setEditingProduct(getDefaultFormData());
     setShowModal(true);
   };
 
@@ -307,9 +292,7 @@ const ProductsPanel: React.FC = () => {
         : []
     };
     
-    setFormData(productData);
     setEditingProduct(productData);
-    setIsCreating(false);
     setShowModal(true);
   };
 
@@ -326,28 +309,32 @@ const ProductsPanel: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!editingProduct) {
+      console.error('❌ Nenhum produto sendo editado');
+      return;
+    }
+
+    const isCreating = !editingProduct.id;
+    
     console.log('🚀 Iniciando salvamento do produto:', {
       isCreating,
-      hasEditingProduct: !!editingProduct,
-      formData,
-      productId: editingProduct?.id
+      productData: editingProduct
     });
 
     try {
       if (isCreating) {
-        // Para criação, não passar o ID
-        const newProduct = await createProduct(formData);
+        // Para criação, remover o ID se existir
+        const { id, ...productDataWithoutId } = editingProduct;
+        const newProduct = await createProduct(productDataWithoutId);
         console.log('✅ Produto criado:', newProduct);
-      } else if (editingProduct?.id) {
-        // Para edição, usar o ID do produto existente
-        const updatedProduct = await updateProduct(editingProduct.id!, formData);
-        console.log('✅ Produto atualizado:', updatedProduct);
       } else {
-        throw new Error('Estado inválido: não é criação nem edição válida');
+        // Para edição, usar o ID do produto existente
+        const updatedProduct = await updateProduct(editingProduct.id!, editingProduct);
+        console.log('✅ Produto atualizado:', updatedProduct);
       }
       
       setShowModal(false);
-      resetForm();
+      setEditingProduct(null);
       
       // Show success message
       const successMessage = document.createElement('div');
@@ -376,7 +363,6 @@ const ProductsPanel: React.FC = () => {
       // Log completo do erro
       console.error('Erro completo:', {
         error,
-        formData,
         editingProduct,
         isCreating
       });
@@ -388,7 +374,7 @@ const ProductsPanel: React.FC = () => {
       console.log('🚀 Iniciando upload de imagem...');
       const uploadedImage = await uploadImage(file);
       console.log('✅ Upload concluído:', uploadedImage.url);
-      setFormData(prev => ({ ...prev, image_url: uploadedImage.url }));
+      setEditingProduct(prev => prev ? { ...prev, image_url: uploadedImage.url } : null);
       
       // Atualizar cache local de imagens
       if (editingProduct?.id) {
@@ -405,7 +391,7 @@ const ProductsPanel: React.FC = () => {
 
   const handleImageSelect = (imageUrl: string) => {
     console.log('🖼️ Imagem selecionada:', imageUrl.substring(0, 50) + '...');
-    setFormData(prev => ({ ...prev, image_url: imageUrl }));
+    setEditingProduct(prev => prev ? { ...prev, image_url: imageUrl } : null);
     
     // Atualizar cache local de imagens
     if (editingProduct?.id) {
@@ -451,11 +437,11 @@ const ProductsPanel: React.FC = () => {
     }
   };
   const applyDefaultComplementGroups = () => {
-    setFormData(prev => ({
+    setEditingProduct(prev => prev ? ({
       ...prev,
       has_complements: true,
       complement_groups: [...DEFAULT_COMPLEMENT_GROUPS]
-    }));
+    }) : null);
   };
 
   const handleGroupDragStart = (e: React.DragEvent, groupIndex: number) => {
@@ -486,10 +472,10 @@ const ProductsPanel: React.FC = () => {
     const insertIndex = draggedGroupIndex < targetGroupIndex ? targetGroupIndex - 1 : targetGroupIndex;
     newGroups.splice(insertIndex, 0, draggedGroup);
     
-    setFormData(prev => ({
+    setEditingProduct(prev => prev ? ({
       ...prev,
       complement_groups: newGroups
-    }));
+    }) : null);
     
     setDraggedGroupIndex(null);
   };
@@ -534,10 +520,10 @@ const ProductsPanel: React.FC = () => {
       targetGroup.options.splice(targetOptionIndex, 0, draggedOption);
     }
     
-    setFormData(prev => ({
+    setEditingProduct(prev => prev ? ({
       ...prev,
       complement_groups: newGroups
-    }));
+    }) : null);
     
     setDraggedOptionIndex(null);
   };
@@ -551,26 +537,26 @@ const ProductsPanel: React.FC = () => {
       options: []
     };
     
-    setFormData(prev => ({
+    setEditingProduct(prev => prev ? ({
       ...prev,
       complement_groups: [...(prev.complement_groups || []), newGroup]
-    }));
+    }) : null);
   };
 
   const updateComplementGroup = (groupIndex: number, updates: Partial<ComplementGroup>) => {
-    setFormData(prev => ({
+    setEditingProduct(prev => prev ? ({
       ...prev,
       complement_groups: prev.complement_groups?.map((group, index) =>
         index === groupIndex ? { ...group, ...updates } : group
       ) || []
-    }));
+    }) : null);
   };
 
   const removeComplementGroup = (groupIndex: number) => {
-    setFormData(prev => ({
+    setEditingProduct(prev => prev ? ({
       ...prev,
       complement_groups: prev.complement_groups?.filter((_, index) => index !== groupIndex) || []
-    }));
+    }) : null);
   };
 
   const addComplementOption = (groupIndex: number) => {
@@ -580,18 +566,18 @@ const ProductsPanel: React.FC = () => {
       description: ""
     };
     
-    setFormData(prev => ({
+    setEditingProduct(prev => prev ? ({
       ...prev,
       complement_groups: prev.complement_groups?.map((group, index) =>
         index === groupIndex 
           ? { ...group, options: [...group.options, newOption] }
           : group
       ) || []
-    }));
+    }) : null);
   };
 
   const updateComplementOption = (groupIndex: number, optionIndex: number, updates: Partial<ComplementOption>) => {
-    setFormData(prev => ({
+    setEditingProduct(prev => prev ? ({
       ...prev,
       complement_groups: prev.complement_groups?.map((group, gIndex) =>
         gIndex === groupIndex
@@ -603,18 +589,18 @@ const ProductsPanel: React.FC = () => {
             }
           : group
       ) || []
-    }));
+    }) : null);
   };
 
   const removeComplementOption = (groupIndex: number, optionIndex: number) => {
-    setFormData(prev => ({
+    setEditingProduct(prev => prev ? ({
       ...prev,
       complement_groups: Array.isArray(prev.complement_groups) ? prev.complement_groups.map((group, gIndex) =>
         gIndex === groupIndex
           ? { ...group, options: group.options.filter((_, oIndex) => oIndex !== optionIndex) }
           : group
       ) : []
-    }));
+    }) : null);
   };
 
   if (loading) {
@@ -742,9 +728,9 @@ const ProductsPanel: React.FC = () => {
                           📱 Imagens ficam sincronizadas em todos os dispositivos
                         </div>
                         <div className="flex items-center gap-4">
-                          {(formData.image_url || (editingProduct?.id && productImages[editingProduct.id])) ? (
+                          {(editingProduct?.image_url || (editingProduct?.id && productImages[editingProduct.id])) ? (
                             <img
-                              src={formData.image_url || (editingProduct?.id && productImages[editingProduct.id]) || ''}
+                              src={editingProduct?.image_url || (editingProduct?.id && productImages[editingProduct.id]) || ''}
                               alt="Preview"
                               className="w-20 h-20 object-cover rounded-lg border"
                             />
@@ -771,8 +757,8 @@ const ProductsPanel: React.FC = () => {
                           </label>
                           <input
                             type="text"
-                            value={formData.name}
-                            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                            value={editingProduct?.name || ''}
+                            onChange={(e) => setEditingProduct(prev => prev ? ({ ...prev, name: e.target.value }) : null)}
                             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             required
                           />
@@ -783,8 +769,8 @@ const ProductsPanel: React.FC = () => {
                             Categoria *
                           </label>
                           <select
-                            value={formData.category}
-                            onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                            value={editingProduct?.category || 'acai'}
+                            onChange={(e) => setEditingProduct(prev => prev ? ({ ...prev, category: e.target.value }) : null)}
                             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             required
                           >
@@ -808,8 +794,8 @@ const ProductsPanel: React.FC = () => {
                             <input
                               type="number"
                               step="0.01"
-                              value={formData.price}
-                              onChange={(e) => setFormData(prev => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
+                              value={editingProduct?.price || 0}
+                              onChange={(e) => setEditingProduct(prev => prev ? ({ ...prev, price: parseFloat(e.target.value) || 0 }) : null)}
                               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                               required
                             />
@@ -822,8 +808,8 @@ const ProductsPanel: React.FC = () => {
                             <input
                               type="number"
                               step="0.01"
-                              value={formData.original_price || ''}
-                              onChange={(e) => setFormData(prev => ({ ...prev, original_price: parseFloat(e.target.value) || undefined }))}
+                              value={editingProduct?.original_price || ''}
+                              onChange={(e) => setEditingProduct(prev => prev ? ({ ...prev, original_price: parseFloat(e.target.value) || undefined }) : null)}
                               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                               placeholder="Para produtos em promoção (preço riscado)"
                             />
@@ -834,8 +820,8 @@ const ProductsPanel: React.FC = () => {
                           <label className="flex items-center gap-2">
                             <input
                               type="checkbox"
-                              checked={formData.is_weighable}
-                              onChange={(e) => setFormData(prev => ({ ...prev, is_weighable: e.target.checked }))}
+                              checked={editingProduct?.is_weighable || false}
+                              onChange={(e) => setEditingProduct(prev => prev ? ({ ...prev, is_weighable: e.target.checked }) : null)}
                               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
                             <span className="text-sm font-medium text-gray-700">
@@ -869,8 +855,8 @@ const ProductsPanel: React.FC = () => {
                     Descrição *
                   </label>
                   <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    value={editingProduct?.description || ''}
+                    onChange={(e) => setEditingProduct(prev => prev ? ({ ...prev, description: e.target.value }) : null)}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     rows={3}
                     required
@@ -900,9 +886,9 @@ const ProductsPanel: React.FC = () => {
                     </div>
                   </div>
 
-                  {formData.complement_groups && formData.complement_groups.length > 0 ? (
+                  {editingProduct?.complement_groups && editingProduct.complement_groups.length > 0 ? (
                     <div className="space-y-6">
-                      {formData.complement_groups.map((group, groupIndex) => (
+                      {editingProduct.complement_groups.map((group, groupIndex) => (
                         <div 
                           key={groupIndex} 
                           className={`border rounded-lg p-4 bg-gray-50 transition-all ${
@@ -1087,7 +1073,7 @@ const ProductsPanel: React.FC = () => {
                 className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
               >
                 <Save className="w-4 h-4" />
-                {editingProduct ? 'Atualizar' : 'Criar'} Produto
+                {editingProduct?.id ? 'Atualizar' : 'Criar'} Produto
               </button>
             </div>
           </div>
@@ -1100,7 +1086,7 @@ const ProductsPanel: React.FC = () => {
           isOpen={showImageModal}
           onClose={() => setShowImageModal(false)}
           onSelectImage={handleImageSelect}
-          currentImage={formData.image_url || (editingProduct?.id && productImages[editingProduct.id])}
+          currentImage={editingProduct?.image_url || (editingProduct?.id && productImages[editingProduct.id])}
         />
       )}
 
